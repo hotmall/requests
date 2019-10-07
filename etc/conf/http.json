@@ -1,0 +1,13 @@
+{
+    "client" : {
+        "dialDualStack": false,
+        "maxConnsPerHost": 512,
+        "maxIdleConnDuration": 10,
+        "maxIdemponentCallAttempts": 5,
+        "readBufferSize": 0,
+        "writeBufferSize": 0,
+        "readTimeout": 0,
+        "writeTimeout": 0,
+        "maxResponseBodySize": 0
+    }
+}

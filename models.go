@@ -2,8 +2,8 @@ package requests
 
 import "net/http"
 
-// Headers represent http header
-type Headers map[string]string
+// Header represent http header
+type Header map[string]string
 
 // Params represent http query params
 type Params map[string]string
@@ -17,6 +17,9 @@ type Files map[string]string
 // Auth represent http auth, {username, password}
 type Auth []string
 
+// JSON represent http post json body
+type JSON string
+
 // Request1 represents HTTP request.
 type Request1 struct {
 	noCopy  noCopy
@@ -28,9 +31,8 @@ type Request1 struct {
 
 // Response1 represents HTTP response.
 type Response1 struct {
-	noCopy  noCopy
-	R       *http.Response
-	content []byte
-	text    string
-	req     *Request1
+	noCopy     noCopy
+	StatusCode int // e.g. 200
+	Header     Header
+	body       []byte
 }

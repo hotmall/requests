@@ -2,10 +2,16 @@ package requests
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/valyala/fasthttp"
+)
+
+const (
+	// VERSION represent hotmall/requests version
+	VERSION = "0.1"
 )
 
 var (
@@ -14,6 +20,7 @@ var (
 
 func init() {
 	client = &fasthttp.Client{
+		Name:                      "Hotmall Go Requests " + VERSION,
 		DialDualStack:             config.Client.DialDualStack,
 		MaxConnsPerHost:           config.Client.MaxConnsPerHost,
 		MaxIdleConnDuration:       config.Client.MaxIdleConnDuration * time.Second,
@@ -25,11 +32,31 @@ func init() {
 	}
 }
 
-func Request2(method, url string, args ...interface{}) (resp *Response1, err error) {
+// Request sends a http request
+func Request(method, url string, args ...interface{}) (resp *Response, err error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
-	params := []map[string]string{}
+	buildRequest(req, method, url, args...)
+
+	response := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(response)
+
+	// err = client.Do(req, response)
+	err = doRequestFollowRedirects(req, response)
+	if err != nil {
+		return
+	}
+
+	resp, err = buildResponse(response)
+	return
+}
+
+func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}) RequestOptions {
+	var opts = RequestOptions{
+		AllowRedirects: false,
+		Timeout:        0,
+	}
 	for _, arg := range args {
 		switch a := arg.(type) {
 		case Header:
@@ -40,7 +67,6 @@ func Request2(method, url string, args ...interface{}) (resp *Response1, err err
 		case Params:
 			// arg is "GET" params
 			// ?title=website&id=1860&from=login
-			params = append(params, a)
 			args := fasthttp.AcquireArgs()
 			defer fasthttp.ReleaseArgs(args)
 
@@ -67,30 +93,38 @@ func Request2(method, url string, args ...interface{}) (resp *Response1, err err
 		case Auth:
 			// a{username,password}
 			// req.httpreq.SetBasicAuth(a[0], a[1])
+		case RequestOptions:
+			opts = arg.(RequestOptions)
+		default:
+
 		}
 	}
 
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
 
-	response := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(response)
+	return opts
+}
 
-	err = client.Do(req, response)
-	if err != nil {
-		return
+func buildResponse(r *fasthttp.Response) (resp *Response, err error) {
+	resp = &Response{
+		Header: make(Header),
 	}
+	resp.StatusCode = r.StatusCode()
 
-	resp.StatusCode = response.StatusCode()
+	r.Header.VisitAll(func(key, value []byte) {
+		resp.Header[string(key)] = string(value)
+	})
+
 	var b []byte
-	if v := response.Header.Peek(fasthttp.HeaderContentEncoding); v != nil {
+	if v := r.Header.Peek(fasthttp.HeaderContentEncoding); v != nil {
 		if bytes.Compare(v, []byte("gzip")) == 0 {
-			b, err = response.BodyGunzip()
+			b, err = r.BodyGunzip()
 			if err != nil {
 				return
 			}
 		} else if bytes.Compare(v, []byte("deflate")) == 0 {
-			b, err = response.BodyInflate()
+			b, err = r.BodyInflate()
 			if err != nil {
 				return
 			}
@@ -99,9 +133,56 @@ func Request2(method, url string, args ...interface{}) (resp *Response1, err err
 			return
 		}
 	} else {
-		b = response.Body()
+		b = r.Body()
 	}
 
 	resp.body = append(resp.body, b...)
 	return
+}
+
+const maxRedirectsCount = 16
+
+var (
+	errMissingLocation  = errors.New("missing Location header for http redirect")
+	errTooManyRedirects = errors.New("too many redirects detected when doing the request")
+)
+
+func doRequestFollowRedirects(req *fasthttp.Request, resp *fasthttp.Response) (err error) {
+	url := req.RequestURI()
+	redirectsCount := 0
+	for {
+		req.SetRequestURIBytes(url)
+
+		if err = client.Do(req, resp); err != nil {
+			break
+		}
+
+		statusCode := resp.Header.StatusCode()
+		if !fasthttp.StatusCodeIsRedirect(statusCode) {
+			break
+		}
+
+		redirectsCount++
+		if redirectsCount > maxRedirectsCount {
+			err = errTooManyRedirects
+			break
+		}
+
+		location := resp.Header.Peek(fasthttp.HeaderLocation)
+		if len(location) == 0 {
+			err = errMissingLocation
+			break
+		}
+		url = getRedirectURL(location)
+	}
+
+	return
+}
+
+func getRedirectURL(location []byte) []byte {
+	u := fasthttp.AcquireURI()
+	defer fasthttp.ReleaseURI(u)
+	u.UpdateBytes(location)
+	redirectURL := u.FullURI()
+	return redirectURL
 }

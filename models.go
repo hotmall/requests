@@ -1,6 +1,6 @@
 package requests
 
-import "net/http"
+import "time"
 
 // Header represent http header
 type Header map[string]string
@@ -20,19 +20,26 @@ type Auth []string
 // JSON represent http post json body
 type JSON string
 
-// Request1 represents HTTP request.
-type Request1 struct {
-	noCopy  noCopy
-	Debug   bool
-	httpreq *http.Request
-	Header  *http.Header
-	Cookies []*http.Cookie
+// RequestOptions reprents http request options
+type RequestOptions struct {
+	AllowRedirects bool
+	Timeout        time.Duration
 }
 
-// Response1 represents HTTP response.
-type Response1 struct {
+// Response represents HTTP response.
+type Response struct {
 	noCopy     noCopy
 	StatusCode int // e.g. 200
 	Header     Header
 	body       []byte
+}
+
+// Content of the response, in bytes.
+func (r *Response) Content() []byte {
+	return r.body
+}
+
+// Text of the response, in unicode
+func (r *Response) Text() string {
+	return string(r.body)
 }

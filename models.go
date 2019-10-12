@@ -20,8 +20,8 @@ type Auth []string
 // JSON represent http post json body
 type JSON string
 
-// RequestOptions reprents http request options
-type RequestOptions struct {
+// Option reprents http request options
+type Option struct {
 	AllowRedirects bool
 	Timeout        time.Duration
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/valyala/fasthttp"
@@ -37,13 +38,12 @@ func Request(method, url string, args ...interface{}) (resp *Response, err error
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
-	buildRequest(req, method, url, args...)
+	opts := buildRequest(req, method, url, args...)
 
 	response := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(response)
 
-	// err = client.Do(req, response)
-	err = doRequestFollowRedirects(req, response)
+	err = doRequestTimeout(req, response, opts.AllowRedirects, opts.Timeout)
 	if err != nil {
 		return
 	}
@@ -52,8 +52,8 @@ func Request(method, url string, args ...interface{}) (resp *Response, err error
 	return
 }
 
-func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}) RequestOptions {
-	var opts = RequestOptions{
+func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}) Option {
+	var opts = Option{
 		AllowRedirects: false,
 		Timeout:        0,
 	}
@@ -93,8 +93,8 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 		case Auth:
 			// a{username,password}
 			// req.httpreq.SetBasicAuth(a[0], a[1])
-		case RequestOptions:
-			opts = arg.(RequestOptions)
+		case Option:
+			opts = arg.(Option)
 		default:
 
 		}
@@ -140,6 +140,37 @@ func buildResponse(r *fasthttp.Response) (resp *Response, err error) {
 	return
 }
 
+var errorPool sync.Pool
+
+func doRequestTimeout(req *fasthttp.Request, resp *fasthttp.Response, allowRedirects bool, timeout time.Duration) (err error) {
+	if timeout <= 0 {
+		return doRequestFollowRedirects(req, resp, allowRedirects)
+	}
+
+	var ch chan error
+	chv := errorPool.Get()
+	if chv == nil {
+		chv = make(chan error, 1)
+	}
+	ch = chv.(chan error)
+
+	go func() {
+		err := doRequestFollowRedirects(req, resp, allowRedirects)
+		ch <- err
+	}()
+
+	tc := fasthttp.AcquireTimer(timeout)
+	select {
+	case err = <-ch:
+		errorPool.Put(chv)
+	case <-tc.C:
+		err = fasthttp.ErrTimeout
+	}
+	fasthttp.ReleaseTimer(tc)
+
+	return
+}
+
 const maxRedirectsCount = 16
 
 var (
@@ -147,7 +178,7 @@ var (
 	errTooManyRedirects = errors.New("too many redirects detected when doing the request")
 )
 
-func doRequestFollowRedirects(req *fasthttp.Request, resp *fasthttp.Response) (err error) {
+func doRequestFollowRedirects(req *fasthttp.Request, resp *fasthttp.Response, allowRedirects bool) (err error) {
 	url := req.RequestURI()
 	redirectsCount := 0
 	for {
@@ -159,6 +190,10 @@ func doRequestFollowRedirects(req *fasthttp.Request, resp *fasthttp.Response) (e
 
 		statusCode := resp.Header.StatusCode()
 		if !fasthttp.StatusCodeIsRedirect(statusCode) {
+			break
+		}
+
+		if !allowRedirects {
 			break
 		}
 

@@ -189,7 +189,7 @@ func doRequestFollowRedirects(req *fasthttp.Request, resp *fasthttp.Response, al
 		}
 
 		statusCode := resp.Header.StatusCode()
-		if !fasthttp.StatusCodeIsRedirect(statusCode) {
+		if !StatusCodeIsRedirect(statusCode) {
 			break
 		}
 
@@ -220,4 +220,13 @@ func getRedirectURL(location []byte) []byte {
 	u.UpdateBytes(location)
 	redirectURL := u.FullURI()
 	return redirectURL
+}
+
+// StatusCodeIsRedirect returns true if the status code indicates a redirect.
+func StatusCodeIsRedirect(statusCode int) bool {
+	return statusCode == StatusMovedPermanently ||
+		statusCode == StatusFound ||
+		statusCode == StatusSeeOther ||
+		statusCode == StatusTemporaryRedirect ||
+		statusCode == StatusPermanentRedirect
 }

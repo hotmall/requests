@@ -58,10 +58,11 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 		Timeout:        0,
 	}
 	for _, arg := range args {
-		switch a := arg.(type) {
+		switch arg.(type) {
 		case Header:
 			// arg is Header , set to request header
-			for k, v := range a {
+			h := arg.(Header)
+			for k, v := range h {
 				req.Header.Set(k, v)
 			}
 		case Params:
@@ -89,7 +90,8 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 			req.Header.SetContentType("application/x-www-form-urlencoded")
 		case JSON:
 			req.Header.SetContentType("application/json")
-			req.SetBodyString(arg.(string))
+			j := arg.(JSON)
+			req.SetBodyString(string(j))
 		case Auth:
 			// a{username,password}
 			// req.httpreq.SetBasicAuth(a[0], a[1])

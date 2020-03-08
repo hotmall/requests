@@ -59,6 +59,5 @@ func init() {
 	err := loadConfig(filename, &config)
 	if err != nil {
 		fmt.Printf("Load config file(%s) fail, err = %s", filename, err.Error())
-		os.Exit(1)
 	}
 }

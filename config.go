@@ -58,6 +58,6 @@ func init() {
 	filename := prefix + "/etc/conf/http.json"
 	err := loadConfig(filename, &config)
 	if err != nil {
-		fmt.Printf("Load config file(%s) fail, err = %s", filename, err.Error())
+		fmt.Printf("Load config file(%s) fail, err = %s\n", filename, err.Error())
 	}
 }

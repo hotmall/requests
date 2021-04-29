@@ -4,8 +4,8 @@ github.com/klauspost/compress v1.8.2 h1:Bx0qjetmNjdFXASH02NSAREKpiaDwkO1DRZ3dV2K
 github.com/klauspost/compress v1.8.2/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/cpuid v1.2.1 h1:vJi+O/nMdFt0vqm8NZBI6wzALWdA2X+egi0ogNyrC/w=
 github.com/klauspost/cpuid v1.2.1/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
-github.com/mallbook/commandline v0.0.0-20200308141511-50d268ff770d h1:z3wRNv/SH+gZRTj392YVGhaJFtoR1+m1Pgzj3PVZah4=
-github.com/mallbook/commandline v0.0.0-20200308141511-50d268ff770d/go.mod h1:zIzKsdyCUMDabEWiOzvHYkQbXWoM9w3CQLVOcKaUaqc=
+github.com/hotmall/commandline v0.0.0-20200308141511-50d268ff770d h1:z3wRNv/SH+gZRTj392YVGhaJFtoR1+m1Pgzj3PVZah4=
+github.com/hotmall/commandline v0.0.0-20200308141511-50d268ff770d/go.mod h1:zIzKsdyCUMDabEWiOzvHYkQbXWoM9w3CQLVOcKaUaqc=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
 github.com/smartystreets/assertions v1.0.1/go.mod h1:kHHU4qYBaI3q23Pp3VPrmWhuIUrLW/7eUrw0BU5VaoM=
 github.com/smartystreets/goconvey v1.6.4/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=

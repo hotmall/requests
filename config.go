@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mallbook/commandline"
+	"github.com/hotmall/commandline"
 )
 
 var (

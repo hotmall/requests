@@ -2,7 +2,7 @@
 
 Go language implements a http client library like python requests, based on fasthttp.
 
-## httpclient.json
+## etc/conf/http.json
 
 ```json
 {

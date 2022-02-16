@@ -12,7 +12,7 @@ import (
 
 const (
 	// VERSION represent hotmall/requests version
-	VERSION = "0.1"
+	VERSION = "v0.1"
 )
 
 var (

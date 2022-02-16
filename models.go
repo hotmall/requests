@@ -22,14 +22,15 @@ type JSON string
 
 // Option reprents http request options
 type Option struct {
-	AllowRedirects bool
-	Timeout        time.Duration
+	AllowRedirects                    bool
+	Timeout                           time.Duration
+	RequestHeaderNoDefaultContentType bool
 }
 
 // Response represents HTTP response.
 type Response struct {
-	noCopy     noCopy
-	StatusCode int // e.g. 200
+	noCopy     noCopy //nolint:unused,structcheck
+	StatusCode int    // e.g. 200
 	Header     Header
 	body       []byte
 }

@@ -38,7 +38,11 @@ func Request(method, url string, args ...interface{}) (resp *Response, err error
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
-	opts := buildRequest(req, method, url, args...)
+	opts, err := buildRequest(req, method, url, args...)
+	if err != nil {
+		return
+	}
+	req.Header.SetNoDefaultContentType(opts.RequestHeaderNoDefaultContentType)
 
 	response := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(response)
@@ -52,13 +56,9 @@ func Request(method, url string, args ...interface{}) (resp *Response, err error
 	return
 }
 
-func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}) Option {
-	var opts = Option{
-		AllowRedirects: false,
-		Timeout:        0,
-	}
+func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}) (opts Option, err error) {
 	for _, arg := range args {
-		switch arg.(type) {
+		switch t := arg.(type) {
 		case Header:
 			// arg is Header , set to request header
 			h := arg.(Header)
@@ -98,14 +98,12 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 		case Option:
 			opts = arg.(Option)
 		default:
-
+			err = fmt.Errorf("not support argument type:(%s)", t)
 		}
 	}
-
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
-
-	return opts
+	return
 }
 
 func buildResponse(r *fasthttp.Response) (resp *Response, err error) {
@@ -120,18 +118,18 @@ func buildResponse(r *fasthttp.Response) (resp *Response, err error) {
 
 	var b []byte
 	if v := r.Header.Peek(fasthttp.HeaderContentEncoding); v != nil {
-		if bytes.Compare(v, []byte("gzip")) == 0 {
+		if bytes.Equal(v, []byte("gzip")) {
 			b, err = r.BodyGunzip()
 			if err != nil {
 				return
 			}
-		} else if bytes.Compare(v, []byte("deflate")) == 0 {
+		} else if bytes.Equal(v, []byte("deflate")) {
 			b, err = r.BodyInflate()
 			if err != nil {
 				return
 			}
 		} else {
-			err = fmt.Errorf("Not support Content-Encoding:%s", v)
+			err = fmt.Errorf("not support Content-Encoding:%s", v)
 			return
 		}
 	} else {

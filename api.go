@@ -7,7 +7,7 @@ func Get(url string, args ...interface{}) (resp *Response, err error) {
 
 // Post sends a POST request
 func Post(url string, args ...interface{}) (resp *Response, err error) {
-	return Request(MethodPost, url, args)
+	return Request(MethodPost, url, args...)
 }
 
 // Put sends a PUT request

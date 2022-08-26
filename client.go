@@ -117,9 +117,6 @@ func buildMultiForm(req *fasthttp.Request, mf MultiForm) (err error) {
 	w := multipart.NewWriter(&b)
 	for key, f := range mf {
 		var fw io.Writer
-		if x, ok := f.(io.Closer); ok {
-			defer x.Close()
-		}
 		if x, ok := f.(*os.File); ok {
 			// Add an image file
 			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {

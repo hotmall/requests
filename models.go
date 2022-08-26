@@ -1,6 +1,9 @@
 package requests
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 // Header represent http header
 type Header map[string]string
@@ -11,8 +14,8 @@ type Params map[string]string
 // Data represent http post form body
 type Data map[string]string
 
-// Files represent post files, [name]filename
-type Files map[string]string
+// MultiForm represent multipart form
+type MultiForm map[string]io.Reader
 
 // Auth represent http auth, {username, password}
 type Auth []string

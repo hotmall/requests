@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"os"
 	"sync"
 	"time"
 
@@ -12,7 +15,7 @@ import (
 
 const (
 	// VERSION represent hotmall/requests version
-	VERSION = "v0.1"
+	VERSION = "v0.5"
 )
 
 var (
@@ -35,19 +38,19 @@ func init() {
 
 // Request sends a http request
 func Request(method, url string, args ...interface{}) (resp *Response, err error) {
-	req := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(req)
+	request := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(request)
 
-	opts, err := buildRequest(req, method, url, args...)
+	opts, err := buildRequest(request, method, url, args...)
 	if err != nil {
 		return
 	}
-	req.Header.SetNoDefaultContentType(opts.RequestHeaderNoDefaultContentType)
+	request.Header.SetNoDefaultContentType(opts.RequestHeaderNoDefaultContentType)
 
 	response := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(response)
 
-	err = doRequestTimeout(req, response, opts.AllowRedirects, opts.Timeout)
+	err = doRequestTimeout(request, response, opts.AllowRedirects, opts.Timeout)
 	if err != nil {
 		return
 	}
@@ -92,6 +95,9 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 			req.Header.SetContentType("application/json")
 			j := arg.(JSON)
 			req.SetBodyString(string(j))
+		case MultiForm:
+			mf := arg.(MultiForm)
+			err = buildMultiForm(req, mf)
 		case Auth:
 			// a{username,password}
 			// req.httpreq.SetBasicAuth(a[0], a[1])
@@ -103,6 +109,39 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 	}
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
+	return
+}
+
+func buildMultiForm(req *fasthttp.Request, mf MultiForm) (err error) {
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	for key, f := range mf {
+		var fw io.Writer
+		if x, ok := f.(io.Closer); ok {
+			defer x.Close()
+		}
+		if x, ok := f.(*os.File); ok {
+			// Add an image file
+			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {
+				return
+			}
+		} else {
+			// Add other fields
+			if fw, err = w.CreateFormField(key); err != nil {
+				return
+			}
+		}
+		if _, err = io.Copy(fw, f); err != nil {
+			return err
+		}
+	}
+	// Don't forget to close the multipart writer.
+	// If you don't close it, your request will be missing the terminating boundary.
+	w.Close()
+
+	contentType := w.FormDataContentType()
+	req.Header.SetContentType(contentType)
+	req.SetBody(b.Bytes())
 	return
 }
 

@@ -73,3 +73,35 @@ WriteTimeout time.Duration
 // By default response body size is unlimited.
 MaxResponseBodySize int
 ```
+
+## Post multipart form example
+
+```go
+package main
+
+import (
+    "github.com/hotmall/requests"
+)
+
+func mustOpen(f string) *os.File {
+    r, err := os.Open(f)
+    if err != nil {
+        panic(err)
+    }
+    return r
+}
+
+func main() {
+    remoteURL = "/media/v1/avatar"
+    //prepare the reader instances to encode
+    mf := requests.MultiForm{
+        "file":  mustOpen("default.png"),
+        "id": strings.NewReader("1111111111111111111"),
+    }
+
+    err := requests.Upload(remoteURL, mf)
+    if err != nil {
+        panic(err)
+    }
+}
+```

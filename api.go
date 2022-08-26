@@ -34,3 +34,8 @@ func Patch(url string, args ...interface{}) (resp *Response, err error) {
 func Options(url string, args ...interface{}) (resp *Response, err error) {
 	return Request(MethodOptions, url, args...)
 }
+
+// Upload post multipart form request
+func Upload(url string, args ...interface{}) (resp *Response, err error) {
+	return Request(MethodPost, url, args...)
+}

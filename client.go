@@ -5,8 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
+	"net/textproto"
 	"os"
+	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,6 +116,23 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 	return
 }
 
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
+}
+
+func createFormFile(w *multipart.Writer, fieldname, filename string) (io.Writer, error) {
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
+			escapeQuotes(fieldname), escapeQuotes(filename)))
+	ext := path.Ext(filename)
+	contentType := mime.TypeByExtension(ext)
+	h.Set("Content-Type", contentType)
+	return w.CreatePart(h)
+}
+
 func buildMultiForm(req *fasthttp.Request, mf MultiForm) (err error) {
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
@@ -119,7 +140,7 @@ func buildMultiForm(req *fasthttp.Request, mf MultiForm) (err error) {
 		var fw io.Writer
 		if x, ok := f.(*os.File); ok {
 			// Add an image file
-			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {
+			if fw, err = createFormFile(w, key, x.Name()); err != nil {
 				return
 			}
 		} else {

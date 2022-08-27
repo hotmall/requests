@@ -80,7 +80,12 @@ MaxResponseBodySize int
 package main
 
 import (
-    "github.com/hotmall/requests"
+   "fmt"
+   "os"
+   "strings"
+
+   "github.com/hotmall/requests"
+   "gitlab.com/hotmall/portmatrix"
 )
 
 func mustOpen(f string) *os.File {
@@ -92,16 +97,22 @@ func mustOpen(f string) *os.File {
 }
 
 func main() {
-    remoteURL = "/media/v1/avatar"
-    //prepare the reader instances to encode
+    fmt.Println("hello world")
+    remoteURL := portmatrix.MEDIA_HOST + "/media/v1/avatars"
+
+    r := mustOpen("default.png")
+    defer r.Close()
+
     mf := requests.MultiForm{
-        "file":  mustOpen("default.png"),
-        "id": strings.NewReader("1111111111111111111"),
+       "file": r,
+       "id":   strings.NewReader("1111111111111111111"),
     }
 
-    err := requests.Upload(remoteURL, mf)
+    resp, err := requests.Upload(remoteURL, mf)
     if err != nil {
         panic(err)
     }
+    fmt.Println("resp status is", resp.StatusCode)
+    fmt.Println("resp is ", resp.Text())
 }
 ```

@@ -5,11 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
-	"net/textproto"
-	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -18,8 +14,9 @@ import (
 )
 
 const (
-	// VERSION represent hotmall/requests version
-	VERSION = "v0.5"
+	FILE_KEY        = "file"
+	FILENAME_KEY    = "filename"
+	defaultFilename = "hotfile"
 )
 
 var (
@@ -28,7 +25,7 @@ var (
 
 func init() {
 	client = &fasthttp.Client{
-		Name:                      "Hotmall Go Requests " + VERSION,
+		Name:                      "Hotmall Go Requests",
 		DialDualStack:             config.Client.DialDualStack,
 		MaxConnsPerHost:           config.Client.MaxConnsPerHost,
 		MaxIdleConnDuration:       config.Client.MaxIdleConnDuration * time.Second,
@@ -116,40 +113,26 @@ func buildRequest(req *fasthttp.Request, method, url string, args ...interface{}
 	return
 }
 
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
-
-func escapeQuotes(s string) string {
-	return quoteEscaper.Replace(s)
-}
-
-func createFormFile(w *multipart.Writer, fieldname, filename string) (io.Writer, error) {
-	h := make(textproto.MIMEHeader)
-	h.Set("Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
-			escapeQuotes(fieldname), escapeQuotes(filename)))
-	ext := path.Ext(filename)
-	contentType := mime.TypeByExtension(ext)
-	h.Set("Content-Type", contentType)
-	return w.CreatePart(h)
-}
-
 func buildMultiForm(req *fasthttp.Request, mf MultiForm) (err error) {
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
+	// 先解析 filename
+	filename := parseFilename(mf)
+
 	for key, f := range mf {
-		var fw io.Writer
-		if x, ok := f.(*os.File); ok {
-			// Add an image file
-			if fw, err = createFormFile(w, key, x.Name()); err != nil {
+		var part io.Writer
+		if key == FILE_KEY {
+			// Add a media file
+			if part, err = w.CreateFormFile(key, filename); err != nil {
 				return
 			}
 		} else {
 			// Add other fields
-			if fw, err = w.CreateFormField(key); err != nil {
+			if part, err = w.CreateFormField(key); err != nil {
 				return
 			}
 		}
-		if _, err = io.Copy(fw, f); err != nil {
+		if _, err = io.Copy(part, f); err != nil {
 			return err
 		}
 	}
@@ -286,4 +269,19 @@ func StatusCodeIsRedirect(statusCode int) bool {
 		statusCode == StatusSeeOther ||
 		statusCode == StatusTemporaryRedirect ||
 		statusCode == StatusPermanentRedirect
+}
+
+func parseFilename(mf MultiForm) string {
+	filename := defaultFilename
+	if r, ok := mf[FILENAME_KEY]; ok {
+		if rdr, ok := r.(*strings.Reader); ok {
+			b := make([]byte, rdr.Size())
+			if _, err := rdr.Read(b); err == nil {
+				filename = string(b)
+				// 不要忘记重新 reset 以下，否则再次调用 Read 方法，会返回 io.EOF 错误
+				rdr.Reset(filename)
+			}
+		}
+	}
+	return filename
 }
